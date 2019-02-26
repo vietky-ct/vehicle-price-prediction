@@ -198,6 +198,8 @@ y = df_new['duration']
 
 # In[25]:
 
+def normalize(obj):
+    return obj
 
 def prepare(X, y, test_size = 0.2, new_case = False, X_new = None):
     from sklearn.feature_extraction.text import TfidfVectorizer

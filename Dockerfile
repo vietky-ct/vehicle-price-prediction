@@ -7,4 +7,6 @@ COPY ./requirements.txt /app
 RUN pip install -r ./requirements.txt
 COPY ./ /app
 
-# ENTRYPOINT ["bash"]
+EXPOSE 9000
+
+ENTRYPOINT ["python", "app.py"]

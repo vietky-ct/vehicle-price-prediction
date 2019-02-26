@@ -4,58 +4,31 @@ import re
 
 from flask import Flask, request, jsonify
 
-from nltk.stem import PorterStemmer
+brand = [1,2,4,5,3,6]
+model = [22,0,25,27,39,32,3,275,10,28,11,26,14,21,24,13]
+spending = ['40k','00','20k']
+regdate = [2007,2017,2015,2018,2011,2014,2010,2013,2008,2009,1980,2002,1981,2012,2006,2001,2000,1999,2004,2016,1998,2003,1997,2005,1990,1993,1988,1994,1991,1995,1982,1996,1992,1984,1987,1989,1983,1986,1985,2019]
+mileage = ['05k','60k','15k_30k','05k_15k','30k_60k']
+region = [13,2,10,7,3,12,9,1,5,8,6,4,11]
+mc_type = [2.0,1.0,3.0]
+mc_capacity = [2.0,3.0,6.0,5.0,1.0,4.0]
 
-porter = PorterStemmer()
-
-def tokenizer_porter(text):
-    return [porter.stem(word) for word in text.split()]
-
-# Unpickle the trained classifier and write preprocessor method used
-def tokenizer(text):
-    return text.split(' ')
-
-def preprocessor(text):
-    # Return a cleaned version of text
-    
-    # Remove HTML markup
-    text = re.sub('<[^>]*>', '', text)
-    # Save emoticons for later appending
-    emoticons = re.findall('(?::|;|=)(?:-)?(?:\)|\(|D|P)', text)
-    # Remove any non-word character and append the emoticons,
-    # removing the nose character for standarization. Convert to lower case
-    text = (re.sub('[\W]+', ' ', text.lower()) + ' ' + ' '.join(emoticons).replace('-', ''))
-
-    return text
-
-# Uncomment this line after you trained your model and copied it to the same folder with app.py
-#tweet_classifier = pickle.load(open('logisticRegression.pkl', 'rb'))
+def init():
+    return ""
 
 app = Flask(__name__, static_folder='static')
 
-@app.route('/')
+@app.route('/hello')
 def index():
-    return app.send_static_file('html/index.html')
+    return jsonify({
+        'message': 'hello world'
+    })
 
 
 @app.route('/classify', methods=['POST'])
 def classify():
-    text = request.form.get('text', None)
-    assert text is not None
-
-    # Take this if-statement out and apply your model here
-    if 'love' in text:
-        prob_neg, prob_pos = 0.1, 0.9
-    elif 'hate' in text:
-        prob_neg, prob_pos = 0.9, 0.1
-    else:
-        prob_neg, prob_pos = 0.5, 0.5
-
-    s = 'Positive' if prob_pos >= prob_neg else 'Negative'
-    p = prob_pos if prob_pos >= prob_neg else prob_neg
     return jsonify({
-        'sentiment': s,
-        'probability': p
+        'message': 'hello world'
     })
 
-app.run()
+app.run(debug=True,host='0.0.0.0',port=9000)
