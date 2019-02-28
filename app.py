@@ -4,6 +4,7 @@ import re
 
 from flask import Flask, request, jsonify
 from sklearn.preprocessing import OneHotEncoder
+import math
 import numpy as np
 import pandas as pd
 
@@ -34,6 +35,20 @@ onehot_mccapa =  OneHotEncoder().fit(mc_capacity.reshape(-1,1))
 lgmod = pickle.load(open('./data/finalized_model.sav', 'rb'))
 
 app = Flask(__name__, static_folder='static')
+
+def cate_brand(x):
+    x = brandMapping[x] if x in brandMapping else 0
+    if x > 6:
+        return 6
+    return(x)
+
+
+def cate_model(x):
+    x = modelMapping[x] if x in modelMapping else 0
+    if x not in model:
+        return 0
+    return(x)
+
 
 #categorize duration
 def cate_duration(x):
@@ -113,9 +128,12 @@ def classify():
 
     data = pd.DataFrame(arr)
 
-    data['brand'] = data['brand_name'].apply(lambda x: brandMapping[x] if x in brandMapping else 0)
-    data['model'] = data['model_name'].apply(lambda x: modelMapping[x] if x in modelMapping else 0)
+    data['brand'] = data['brand_name'].apply(cate_brand)
+    data['model'] = data['model_name'].apply(cate_model)
+    # print(data.price.values)
+    print(",".join([str(x) for x in data.price.values.tolist()]))
 
+    data['price'] = np.log10(data['price'])
     data = data.drop(['model_name', 'brand_name'], axis=1)
     print(data)
 
@@ -127,17 +145,22 @@ def classify():
     maxIndex = np.argmax(predictResult_prob)
     minIndex = np.argmin(predictResult_prob)
 
-    print(data.price.values)
+    # valueIndex = np.argwhere(data['price'] == math.log10(int(request.form['price'])))
+
     print(",".join([str(x) for x in predictResult_prob.tolist()]))
     # predictResult_prob = lgmod.predict_proba(X_test_full)[:,1]
 
     print('predicted', predictResult_prob[maxIndex], predictResult_prob[minIndex])
     print('type ne', type(predictResult_prob), type(data.price), type(data.price.iloc[minIndex]), data.price.iloc[minIndex])
+    # print('valueInedx', valueIndex)
 
     nDays = 'trong' if predictResult[maxIndex] == 0 else 'hơn'
-    print('predictResult[maxIndex]', predictResult[maxIndex])
+    print('data.price.iloc[maxIndex]', math.pow(10, data.price.iloc[maxIndex]))
     return jsonify({
-        'message': 'Bạn có {}% cơ hội để bán đc sản phẩm với giá {:,} {} 2 ngày'.format('%.2f' % (predictResult_prob[maxIndex]*100), int(data.price.iloc[maxIndex]*priceReducer),nDays)
+        'message': 'Bạn có {}% cơ hội để bán đc sản phẩm với giá {:,} {} 2 ngày'.format('%.2f' % (predictResult_prob[maxIndex]*100), int(math.pow(10, data.price.iloc[maxIndex])*priceReducer),nDays),
+        # 'message2': 'Bạn có {}% cơ hội để bán đc sản phẩm với giá {:,} {} 2 ngày'.format('%.2f' % (predictResult_prob[valueIndex]*100), int(math.pow(10, data.price.iloc[valueIndex])*priceReducer),nDays),
+        'price': data['price'].apply(lambda x: math.pow(10, x) * priceReducer).tolist(),
+        'probs': predictResult_prob.tolist()
     })
 
 app.run(debug=True,host='0.0.0.0',port=7777)
