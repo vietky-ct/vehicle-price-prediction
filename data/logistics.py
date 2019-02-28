@@ -261,10 +261,11 @@ def prepare(X, y, test_size = 0.2, new_case = False, X_new = None):
         X_train_mccapa = onehot_mccapa.transform(X_train.mc_capacity.values.reshape(-1,1)).toarray()
         X_test_mccapa = onehot_mccapa.transform(X_test.mc_capacity.values.reshape(-1,1)).toarray()
 
+        X_train_price = X_train.price.values.reshape(-1, 1)
+        X_test_price = X_test.price.values.reshape(-1, 1)
 
-
-        X_train_full = np.concatenate([X_train_mileage,X_train_brand, X_train_model, X_train_regdate, X_train_region, X_train_mctype, X_train_mccapa], axis = 1)
-        X_test_full = np.concatenate([X_test_mileage,X_test_brand, X_test_model, X_test_regdate, X_test_region, X_test_mctype, X_test_mccapa], axis = 1)
+        X_train_full = np.concatenate([X_train_price,X_train_mileage,X_train_brand, X_train_model, X_train_regdate, X_train_region, X_train_mctype, X_train_mccapa], axis = 1)
+        X_test_full = np.concatenate([X_test_price,X_test_mileage,X_test_brand, X_test_model, X_test_regdate, X_test_region, X_test_mctype, X_test_mccapa], axis = 1)
 
         #X_train_full = np.concatenate([X_train_body,X_train_subject,X_train_brand, X_train_model, X_train_spending, X_train_regdate, X_train_region, X_train_mctype, X_train_mccapa], axis = 1)
         #X_test_full = np.concatenate([X_test_body,X_test_subject,X_test_brand, X_test_model, X_test_spending, X_test_regdate, X_test_region, X_test_mctype, X_test_mccapa], axis = 1)

@@ -7,6 +7,9 @@ from sklearn.preprocessing import OneHotEncoder
 import numpy as np
 import pandas as pd
 
+percentageOffset = 20
+priceReducer = 1000000
+
 brand = np.asarray([3,6,1,2,5,4])
 model = np.asarray([0,275,11,3,14,22,80,25,10,13,27,78,19,1,24,39,28,26,32,21,293])
 spending = np.asarray(['0'])
@@ -79,7 +82,8 @@ def get_x_test_full(X_test):
     X_test_region = onehot_region.transform(X_test.region.values.reshape(-1,1)).toarray()
     X_test_mctype = onehot_mctype.transform(X_test.mc_type.values.reshape(-1,1)).toarray()
     X_test_mccapa = onehot_mccapa.transform(X_test.mc_capacity.values.reshape(-1,1)).toarray()
-    X_test_full = np.concatenate([X_test_mileage,X_test_brand, X_test_model, X_test_regdate, X_test_region, X_test_mctype, X_test_mccapa], axis = 1)
+    X_test_price = X_test.price.values.reshape(-1, 1)
+    X_test_full = np.concatenate([X_test_price,X_test_mileage,X_test_brand, X_test_model, X_test_regdate, X_test_region, X_test_mctype, X_test_mccapa], axis = 1)
 
     return X_test_full
 
@@ -92,17 +96,22 @@ def index():
 
 @app.route('/classify', methods=['POST'])
 def classify():
-    data = pd.DataFrame([{
-        'brand_name': request.form['brand'].lower(),
-        'model_name': request.form['model'].lower(),
-        'spending': cate_spending(request.form['spending']),
-        'regdate': request.form['regdate'],
-        'mileage': cate_mileage(request.form['mileage']),
-        'region': request.form['region'],
-        'mc_type': request.form['mc_type'],
-        'mc_capacity': request.form['mc_capacity'],
-        'price': int(request.form['price'])/1000000
-    }])
+    arr = []
+    for percent in range(-percentageOffset, percentageOffset, 1):
+        price = (int(request.form['price']) * (100-percent)/100) / priceReducer
+        arr.append({
+            'brand_name': request.form['brand'].lower(),
+            'model_name': request.form['model'].lower(),
+            'spending': cate_spending(request.form['spending']),
+            'regdate': request.form['regdate'],
+            'mileage': cate_mileage(request.form['mileage']),
+            'region': request.form['region'],
+            'mc_type': request.form['mc_type'],
+            'mc_capacity': request.form['mc_capacity'],
+            'price': price
+        })
+
+    data = pd.DataFrame(arr)
 
     data['brand'] = data['brand_name'].apply(lambda x: brandMapping[x] if x in brandMapping else 0)
     data['model'] = data['model_name'].apply(lambda x: modelMapping[x] if x in modelMapping else 0)
@@ -113,20 +122,22 @@ def classify():
     X_test_full = get_x_test_full(data)
 
     predictResult = lgmod.predict(X_test_full)
-    predictResult_prob = (1 - (lgmod.predict_proba(X_test_full)[:,0] ))
-    #.astype('int64'))
+    predictResult_prob = lgmod.predict_proba(X_test_full)[:,0]
 
+    maxIndex = np.argmax(predictResult_prob)
+    minIndex = np.argmin(predictResult_prob)
+
+    print(data.price.values)
+    print(",".join([str(x) for x in predictResult_prob.tolist()]))
     # predictResult_prob = lgmod.predict_proba(X_test_full)[:,1]
 
-    # print('predicted', predictResult)
-    if predictResult == [0]:
-        msg = '0'
-    else:
-        msg = '1'
+    print('predicted', predictResult_prob[maxIndex], predictResult_prob[minIndex])
+    print('type ne', type(predictResult_prob), type(data.price), type(data.price.iloc[minIndex]), data.price.iloc[minIndex])
 
+    nDays = 'trong' if predictResult[maxIndex] == 0 else 'hơn'
+    print('predictResult[maxIndex]', predictResult[maxIndex])
     return jsonify({
-        'message': msg,
-        "predictResult_prob": predictResult_prob.tolist()
+        'message': 'Bạn có {}% cơ hội để bán đc sản phẩm với giá {:,} {} 2 ngày'.format('%.2f' % (predictResult_prob[maxIndex]*100), int(data.price.iloc[maxIndex]*priceReducer),nDays)
     })
 
 app.run(debug=True,host='0.0.0.0',port=7777)
