@@ -9,4 +9,4 @@ COPY ./ /app
 
 EXPOSE 7777
 
-# ENTRYPOINT ["python", "app.py"]
+ENTRYPOINT ["python", "app.py"]

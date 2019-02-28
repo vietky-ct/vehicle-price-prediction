@@ -1,65 +1,68 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[5]:
-
-
-# import sys
-# !{sys.executable} -m  pip install underthesea
-
-
-# In[6]:
+# In[1]:
 
 
 import pandas as pd
-import numpy  as np
+import numpy as np
 import underthesea as ud
 import re
 import matplotlib.pyplot as plt
 import seaborn as sns
 import pickle
 
-# In[7]:
+
+# In[2]:
 
 
-df = pd.read_csv('final.csv', encoding = 'utf-8')
+df = pd.read_csv('./final1.csv', encoding = 'utf-8')
 
 
-# In[8]:
+# In[3]:
 
 
 #stopwords = pd.read_table('vietnamese-stopwords.txt', sep = '\\t', header = None, names = ['word'])
 #stopwords
 
 
-# In[9]:
+# In[4]:
 
 
-df.head()
+df.head(2)
 
 
-# In[10]:
+# In[5]:
 
 
 df.info()
 
 
-# In[11]:
+# In[6]:
 
 
 #Chuyen gia tri null cua bien dung tich xi lanh = 6
 df['mc_capacity'] = df['mc_capacity'].fillna(value = 6).reset_index(drop = True)
 #Bo cac ad co lead tu 50 tro len
-df = df[df.lead < 50].reset_index(drop = True)
+df = df[np.logical_and(df.duration < 169, df.duration > 1)].reset_index(drop = True)
+df = df[df.lead > 1].reset_index(drop = True)
+df = df[df.spending == 0].reset_index(drop = True)
+df['mileage'] = df['mileage'].fillna(value = -1).reset_index(drop = True)
 
 
-# In[12]:
+# In[7]:
+
+
+df.info()
+
+
+# In[8]:
 
 
 #Bo cac thong tin khong can thiet
 df_new = df.drop(['mc_brand_name', 'mc_model_name', 'ad_id', 'list_id', 'aa_date_time', 'sold_date', 'lead'], axis = 1)
 #Bo cac ad co spending tu 40k tro len
-df_new = df_new[df_new.spending < 40000].reset_index(drop = True)
+#df_new = df_new[df_new.spending < 40000].reset_index(drop = True)
 #Dua bien gia ve thang gia tri nho hon
 df_new['price'] = df_new['price']/1000000
 #Bo cac ad co gia tu 60tr tro len
@@ -73,40 +76,39 @@ model_dict = dict(df_new.model.value_counts())
 df_new['model'] = pd.Series([x if model_dict[x] > 500 else 0 for x in df_new.model])
 
 
-# In[13]:
+# In[9]:
 
 
 df_new.head()
 
 
-# In[14]:
+# In[10]:
 
 
 df_new.astype('object').describe()
 
 
-# In[15]:
+# In[11]:
 
 
-#x = df_new.lead
-#3IQR = x.quantile(0.75) - x.quantile(0.25)
+#x = df.duration
+#IQR = x.quantile(0.75) - x.quantile(0.25)
 #(x.quantile(0.25) - 1.5*IQR, 1.5*IQR + x.quantile(0.75))
+df_new.price.count()/df.price.count()
+#sns.boxplot(df.duration[np.logical_and(df.duration < 168, df.duration > 0)].reset_index(drop = True))
 
 
-# In[16]:
+# In[12]:
 
 
 #categorize duration
 def cate_duration(x):
-    if x >= 0 and x <= 12:
-        value = '00_0.5_ngay'
-    elif x > 12 and x <= 48:
-        value = '01_02_ngay'
-    elif x > 48 and x <= 168:
-        value = '03_07_ngay'
+    if x >= 0 and x <= 48:
+        value = '00_02_ngay'
     else:
-        value = 'hon_1_tuan'
+        value = 'hon_2_ngay'
     return(value)
+
 #categorize spending
 def cate_spending(x):
     if x == 0:
@@ -133,36 +135,45 @@ def cate_mileage(x):
     return value
 
 
-# In[17]:
+# In[13]:
 
 
 df_new['duration'] = df_new.duration.apply(lambda x: cate_duration(x))
-df_new['spending'] = df_new.spending.apply(lambda x: cate_spending(x))
+#df_new['spending'] = df_new.spending.apply(lambda x: cate_spending(x))
 df_new['mileage'] = df_new.mileage.apply(lambda x: cate_mileage(x))
 df_new['regdate'] = df_new['regdate'].astype('str')
 
 
-# In[18]:
+# In[14]:
 
 
 df_new.head()
 
 
-# In[19]:
+# In[15]:
 
 
 #label ouput, 1: ban trong nua ngay, 0: ban tu 1 ngay tro len
-df_new['duration'] = pd.Series([1 if x == '00_0.5_ngay' else 0 for x in df_new.duration])
+df_new['duration'] = pd.Series([1 if x == 'hon_2_ngay' else 0 for x in df_new.duration])
+#df_new = df_new[df_new.spending == '00'].reset_index(drop = True)
+#df_new = df_new.drop('spending', axis = 1)
 df_new.head()
 
 
-# In[20]:
+# In[16]:
+
+
+df_new.groupby('duration').count()
+32/(32+13)
+
+
+# In[17]:
 
 
 #df_new.to_csv('final_preprocess.csv')
 
 
-# In[21]:
+# In[18]:
 
 
 #def remove(text):
@@ -173,7 +184,7 @@ df_new.head()
     #return rm3
 
 
-# In[22]:
+# In[19]:
 
 
 #df_new['subject'] = df_new.subject.apply(remove)
@@ -183,23 +194,21 @@ df_new.head()
 #df_1['mc_model_name'] = df_1.mc_model_name.apply(remove_space)
 
 
-# In[23]:
+# In[20]:
 
 
 #stopwords
 
 
-# In[24]:
+# In[21]:
 
 
 X = df_new.drop('duration', axis = 1)
 y = df_new['duration']
 
 
-# In[25]:
+# In[22]:
 
-def normalize(obj):
-    return obj
 
 def prepare(X, y, test_size = 0.2, new_case = False, X_new = None):
     from sklearn.feature_extraction.text import TfidfVectorizer
@@ -212,7 +221,7 @@ def prepare(X, y, test_size = 0.2, new_case = False, X_new = None):
     #tfidf_subject = TfidfVectorizer(max_features=5000).fit(X_train.subject)
     onehot_brand = OneHotEncoder().fit(X_train.brand.values.reshape(-1,1))
     onehot_model = OneHotEncoder().fit(X_train.model.values.reshape(-1,1))
-    onehot_spending = OneHotEncoder().fit(X_train.spending.values.reshape(-1,1))
+    #onehot_spending = OneHotEncoder().fit(X_train.spending.values.reshape(-1,1))
     onehot_regdate = OneHotEncoder().fit(X_train.regdate.values.reshape(-1,1))
     onehot_mileage = OneHotEncoder().fit(X_train.mileage.values.reshape(-1,1))
     onehot_region =  OneHotEncoder().fit(X_train.region.values.reshape(-1,1))
@@ -234,8 +243,8 @@ def prepare(X, y, test_size = 0.2, new_case = False, X_new = None):
         X_train_model = onehot_model.transform(X_train.model.values.reshape(-1,1)).toarray()
         X_test_model = onehot_model.transform(X_test.model.values.reshape(-1,1)).toarray()
 
-        X_train_spending = onehot_spending.transform(X_train.spending.values.reshape(-1,1)).toarray()
-        X_test_spending = onehot_spending.transform(X_test.spending.values.reshape(-1,1)).toarray()
+        #X_train_spending = onehot_spending.transform(X_train.spending.values.reshape(-1,1)).toarray()
+        #X_test_spending = onehot_spending.transform(X_test.spending.values.reshape(-1,1)).toarray()
 
         X_train_regdate = onehot_regdate.transform(X_train.regdate.values.reshape(-1,1)).toarray()
         X_test_regdate = onehot_regdate.transform(X_test.regdate.values.reshape(-1,1)).toarray()
@@ -254,8 +263,8 @@ def prepare(X, y, test_size = 0.2, new_case = False, X_new = None):
 
 
 
-        X_train_full = np.concatenate([X_train_mileage,X_train_brand, X_train_model, X_train_spending, X_train_regdate, X_train_region, X_train_mctype, X_train_mccapa], axis = 1)
-        X_test_full = np.concatenate([X_test_mileage,X_test_brand, X_test_model, X_test_spending, X_test_regdate, X_test_region, X_test_mctype, X_test_mccapa], axis = 1)
+        X_train_full = np.concatenate([X_train_mileage,X_train_brand, X_train_model, X_train_regdate, X_train_region, X_train_mctype, X_train_mccapa], axis = 1)
+        X_test_full = np.concatenate([X_test_mileage,X_test_brand, X_test_model, X_test_regdate, X_test_region, X_test_mctype, X_test_mccapa], axis = 1)
 
         #X_train_full = np.concatenate([X_train_body,X_train_subject,X_train_brand, X_train_model, X_train_spending, X_train_regdate, X_train_region, X_train_mctype, X_train_mccapa], axis = 1)
         #X_test_full = np.concatenate([X_test_body,X_test_subject,X_test_brand, X_test_model, X_test_spending, X_test_regdate, X_test_region, X_test_mctype, X_test_mccapa], axis = 1)
@@ -265,13 +274,13 @@ def prepare(X, y, test_size = 0.2, new_case = False, X_new = None):
         return (X_train_full, X_test_full, y_train_full, y_test_full)
 
 
-# In[26]:
+# In[23]:
 
 
 X_train, X_test, y_train, y_test = prepare(X,y)
 
 
-# In[27]:
+# In[24]:
 
 
 from sklearn.linear_model import LogisticRegression
@@ -281,35 +290,35 @@ y_pred = lgmod.predict(X_test)
 lgmod.score(X_test, y_test)
 
 
-# In[28]:
+# In[25]:
 
 
-y_pred = (1 - (lgmod.predict_proba(X_test)[:,0] > 0.63).astype('int64'))
+y_pred = (1 - (lgmod.predict_proba(X_test)[:,0] > 0.645).astype('int64'))
 y_pred
 
 
-# In[29]:
+# In[26]:
 
 
 from sklearn.metrics import classification_report
 print(classification_report(y_test,y_pred))
 
 
-# In[30]:
+# In[27]:
 
 
 from sklearn.metrics import confusion_matrix
 print(confusion_matrix(y_test, y_pred))
 
 
-# In[31]:
+# In[28]:
 
 
 from sklearn.model_selection import cross_val_score
 cv_10 = cross_val_score(LogisticRegression(), X_train, y_train, cv = 10)
 
 
-# In[32]:
+# In[29]:
 
 
 np.mean(cv_10)
@@ -321,7 +330,7 @@ np.mean(cv_10)
 
 
 
-# In[33]:
+# In[30]:
 
 
 from sklearn.ensemble import RandomForestClassifier
@@ -331,34 +340,29 @@ y_pred = rfmod.predict(X_test)
 rfmod.score(X_test, y_test)
 
 
-# In[34]:
+# In[31]:
 
 
-y_pred = (1 - (rfmod.predict_proba(X_test)[:,0] > 0.61).astype('int64'))
+y_pred = (1 - (rfmod.predict_proba(X_test)[:,0] > 0.642).astype('int64'))
 y_pred
 
 
-# In[35]:
+# In[32]:
 
 
 from sklearn.metrics import classification_report
 print(classification_report(y_test,y_pred))
 
 
-# In[36]:
+# In[33]:
 
 
 from sklearn.metrics import confusion_matrix
 print(confusion_matrix(y_test, y_pred))
 
+
 # In[44]:
 
 filename = './finalized_model.sav'
 s = pickle.dump(rfmod, open(filename, 'wb'))
-
-
-# In[41]:
-
-
-print('end training', s)
 
